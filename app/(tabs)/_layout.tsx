@@ -6,7 +6,7 @@ import { Chrome as Home, User, FolderKanban, Database, Files } from 'lucide-reac
 
 export default function TabLayout() {
   const { theme } = useTheme();
-  const themeColors = colors[theme];
+  const themeColors = colors[theme] || colors.light; // Provide fallback theme
 
   return (
     <SafeAreaView 
