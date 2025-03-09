@@ -8,10 +8,6 @@
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "experiments": {
-      "typedRoutes": true,
-      "tsconfigPaths": true
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bolt.exponativewind"
@@ -30,6 +26,10 @@
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "tsconfigPaths": true
+    }
   }
 }

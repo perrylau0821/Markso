@@ -3,7 +3,6 @@ import type { Project } from '@/types/projects';
 import moment from 'moment';
 import Animated, { 
   useAnimatedStyle,
-  interpolate,
   SharedValue,
 } from 'react-native-reanimated';
 
@@ -14,6 +13,7 @@ interface CrossMonthProjectProps {
   currentMonth: moment.Moment;
   themeColors: any;
   scrollX: SharedValue<number>;
+  isScrolling: SharedValue<number>;
 }
 
 export default function CrossMonthProject({ 
@@ -21,6 +21,7 @@ export default function CrossMonthProject({
   currentMonth, 
   themeColors,
   scrollX,
+  isScrolling,
 }: CrossMonthProjectProps) {
   const startDate = moment(project.startDate);
   const endDate = moment(project.endDate);
@@ -41,15 +42,9 @@ export default function CrossMonthProject({
   const width = (projectEndOffset - projectStartOffset + 1) * dayWidth;
 
   const animatedStyle = useAnimatedStyle(() => {
-    const translateX = interpolate(
-      scrollX.value,
-      [0, SCREEN_WIDTH],
-      [0, -SCREEN_WIDTH],
-      'clamp'
-    );
-
+    // Simple opacity animation driven directly by isScrolling
     return {
-      transform: [{ translateX }],
+      opacity: project.isFixed ? isScrolling.value : 1,
     };
   });
 

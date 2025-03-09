@@ -11,6 +11,9 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+// Prevent the splash screen from auto-hiding before asset loading is complete.
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
   useFrameworkReady();
 
@@ -23,10 +26,12 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
+      // Hide the splash screen after the fonts have loaded (or an error was encountered)
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
 
+  // Prevent rendering until the font has loaded or an error was encountered
   if (!fontsLoaded && !fontError) {
     return null;
   }

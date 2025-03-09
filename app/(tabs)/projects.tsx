@@ -5,6 +5,12 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Animated, { 
   useSharedValue, 
   useAnimatedScrollHandler,
+  useAnimatedStyle,
+  withTiming,
+  withRepeat,
+  withSequence,
+  withDelay,
+  Easing,
 } from 'react-native-reanimated';
 import moment from 'moment';
 import PageDots from '@/components/PageDots';
@@ -13,6 +19,7 @@ import TimeFilterSelect from '@/components/projects/TimeFilterSelect';
 import MonthCard from '@/components/projects/MonthCard';
 import { projectsUtils } from '@/utils/projects';
 import type { MonthData } from '@/types/projects';
+import { ArrowRight } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -28,6 +35,8 @@ export default function ProjectsScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useSharedValue(0);
+  const isScrolling = useSharedValue(0);
+
 
   useEffect(() => {
     const newMonths = projectsUtils.generateInitialMonths(currentFilter, referenceDate);
@@ -63,6 +72,18 @@ export default function ProjectsScreen() {
     onScroll: (event) => {
       scrollX.value = event.contentOffset.x;
     },
+    onBeginDrag: () => {
+      isScrolling.value = 0;
+    },
+    onEndDrag: () => {
+      isScrolling.value = 1;
+    },
+    onMomentumBegin: () => {
+      isScrolling.value = 0;
+    },
+    onMomentumEnd: () => {
+      isScrolling.value = 1;
+    },
   });
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
@@ -83,6 +104,7 @@ export default function ProjectsScreen() {
     { viewabilityConfig, onViewableItemsChanged },
   ]);
 
+
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <View style={[styles.header, { backgroundColor: themeColors.card }]}>
@@ -91,6 +113,8 @@ export default function ProjectsScreen() {
         </Text>
         
         <TimeFilterSelect themeColors={themeColors} />
+
+        
 
         <PageDots total={months.length} current={currentIndex} />
 
@@ -159,6 +183,7 @@ export default function ProjectsScreen() {
               item={item}
               themeColors={themeColors}
               scrollX={scrollX}
+              isScrolling={isScrolling}
             />
           </View>
         )}
@@ -212,5 +237,23 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  indicatorContainer: {
+    marginVertical: 8,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    alignItems: 'center',
+  },
+  indicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+  },
+  indicatorText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
   },
 });

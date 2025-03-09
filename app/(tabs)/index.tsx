@@ -1,5 +1,6 @@
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { useTheme, colors } from '@/providers/ThemeProvider';
+import { useEffect } from 'react';
 
 export default function HomeScreen() {
   const { theme } = useTheme();
@@ -17,6 +18,9 @@ export default function HomeScreen() {
 
       <View style={styles.content}>
         <Text style={[styles.title, { color: themeColors.text }]}>Your Dashboard</Text>
+
+    
+
         <View style={styles.statsContainer}>
           <View style={[styles.statCard, { 
             backgroundColor: themeColors.card,
@@ -71,6 +75,17 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'Inter-SemiBold',
     marginBottom: 24,
+  },
+  animationContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 200,
+    marginBottom: 24,
+  },
+  box: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
   },
   statsContainer: {
     flexDirection: 'row',

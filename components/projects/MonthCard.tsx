@@ -8,9 +8,10 @@ interface MonthCardProps {
   item: MonthData;
   themeColors: any;
   scrollX: Animated.SharedValue<number>;
+  isScrolling: boolean;
 }
 
-export default function MonthCard({ item, themeColors, scrollX }: MonthCardProps) {
+export default function MonthCard({ item, themeColors, scrollX, isScrolling }: MonthCardProps) {
   const currentMonth = moment(item.date);
 
   return (
@@ -38,6 +39,7 @@ export default function MonthCard({ item, themeColors, scrollX }: MonthCardProps
             currentMonth={currentMonth}
             themeColors={themeColors}
             scrollX={scrollX}
+            isScrolling={isScrolling}
           />
         ))}
 

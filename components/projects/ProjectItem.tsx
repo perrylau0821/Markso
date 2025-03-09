@@ -5,6 +5,8 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   SharedValue,
+  withSpring,
+  useDerivedValue,
 } from 'react-native-reanimated';
 import { Dimensions } from 'react-native';
 
@@ -15,6 +17,7 @@ interface ProjectItemProps {
   currentMonth: moment.Moment;
   themeColors: any;
   scrollX: SharedValue<number>;
+  isScrolling: SharedValue<number>;
 }
 
 export default function ProjectItem({ 
@@ -22,29 +25,35 @@ export default function ProjectItem({
   currentMonth,
   themeColors,
   scrollX,
+  isScrolling,
 }: ProjectItemProps) {
   const startDate = moment(project.startDate);
   const endDate = moment(project.endDate);
 
+  // Derive opacity based on scroll position and scrolling state
+  const opacity = useDerivedValue(() => {
+    if (!project.isFixed) return 1;
+
+    return isScrolling.value
+  });
+
   const animatedStyle = useAnimatedStyle(() => {
-    // Only animate if the project is not fixed
-    if (!project.isFixed) {
-      return {
-        transform: [{
-          translateX: interpolate(
-            scrollX.value,
-            [0, SCREEN_WIDTH],
-            [0, -SCREEN_WIDTH],
-          ),
-        }],
-      };
-    }
-    // Fixed projects don't move
-    return {};
+
+    // Fixed projects fade and scale based on scroll
+    return {
+      opacity: opacity.value,
+      
+    };
   });
 
   return (
-    <Animated.View style={[styles.container, animatedStyle]}>
+    <Animated.View 
+      style={[
+        styles.container, 
+        animatedStyle,
+        project.isFixed && styles.fixedProject
+      ]}
+    >
       <View 
         style={[
           styles.projectCard, 
@@ -73,6 +82,10 @@ export default function ProjectItem({
 const styles = StyleSheet.create({
   container: {
     width: '100%',
+  },
+  fixedProject: {
+    position: 'relative',
+    zIndex: 10,
   },
   projectCard: {
     padding: 16,
