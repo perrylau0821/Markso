@@ -24,21 +24,36 @@ export const TIME_FILTERS: TimeFilterOption[] = [
     id: 'half-year', 
     label: '6 Months', 
     months: 6,
-    getStartDate: (date) => date.clone().startOf('month'),
-    formatLabel: (date) => `${date.format('MMM')} - ${date.clone().add(5, 'months').format('MMM')} ${date.format('YYYY')}`,
+    getStartDate: (date) => {
+      const month = date.month();
+      return date.clone().month(Math.floor(month / 6) * 6).startOf('month');
+    },
+    formatLabel: (date) => {
+      const halfYear = Math.floor(date.month() / 6) + 1;
+      return `H${halfYear}, ${date.format('YYYY')} (${date.format('MMM')} - ${date.clone().add(5, 'months').format('MMM')})`;
+    },
   },
   { 
     id: 'quarter', 
     label: 'Quarter', 
     months: 3,
-    getStartDate: (date) => date.clone().startOf('month'),
-    formatLabel: (date) => `${date.format('MMM')} - ${date.clone().add(2, 'months').format('MMM')} ${date.format('YYYY')}`,
+    getStartDate: (date) => {
+      const month = date.month();
+      return date.clone().month(Math.floor(month / 3) * 3).startOf('month');
+    },
+    formatLabel: (date) => {
+      const quarter = Math.floor(date.month() / 3) + 1;
+      return `Q${quarter}, ${date.format('YYYY')} (${date.format('MMM')} - ${date.clone().add(2, 'months').format('MMM')})`;
+    },
   },
   { 
     id: '2-months', 
     label: '2 Months', 
     months: 2,
-    getStartDate: (date) => date.clone().startOf('month'),
+    getStartDate: (date) => {
+      const month = date.month();
+      return date.clone().month(Math.floor(month / 2) * 2).startOf('month');
+    },
     formatLabel: (date) => `${date.format('MMM')} - ${date.clone().add(1, 'month').format('MMM')} ${date.format('YYYY')}`,
   },
   { 
@@ -62,15 +77,29 @@ interface TimeContextType {
 const TimeContext = createContext<TimeContextType>({} as TimeContextType);
 
 export function TimeProvider({ children }: { children: React.ReactNode }) {
-  const [referenceDate, setReferenceDate] = useState(moment());
-  const [selectedFilter, setSelectedFilter] = useState<TimeFilter>('month');
+  const [referenceDate, setReferenceDateInternal] = useState(moment());
+  const [selectedFilter, setSelectedFilterInternal] = useState<TimeFilter>('month');
 
   const currentFilter = TIME_FILTERS.find(f => f.id === selectedFilter)!;
 
   // Helper function to align a date to the start of the current filter period
   const alignDateToFilter = (date: Moment, filter: TimeFilterOption) => {
-    const startDate = filter.getStartDate(date);
-    return startDate;
+    return filter.getStartDate(date);
+  };
+
+  // Wrapper for setReferenceDate that ensures the date is aligned to the current filter
+  const setReferenceDate = (date: Moment) => {
+    const alignedDate = alignDateToFilter(date, currentFilter);
+    setReferenceDateInternal(alignedDate);
+  };
+
+  // Wrapper for setSelectedFilter that ensures the reference date is properly aligned
+  // when changing filter types
+  const setSelectedFilter = (newFilter: TimeFilter) => {
+    const newFilterOption = TIME_FILTERS.find(f => f.id === newFilter)!;
+    const alignedDate = alignDateToFilter(referenceDate, newFilterOption);
+    setSelectedFilterInternal(newFilter);
+    setReferenceDateInternal(alignedDate);
   };
 
   return (
