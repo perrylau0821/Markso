@@ -1,175 +1,39 @@
-import { View, Text, StyleSheet, Platform, Dimensions, FlatList, TouchableOpacity, Modal, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Platform, Dimensions, FlatList } from 'react-native';
 import { useTheme, colors } from '@/providers/ThemeProvider';
-import { useTime, TIME_FILTERS } from '@/providers/TimeProvider';
+import { useTime } from '@/providers/TimeProvider';
 import { useState, useRef, useCallback, useEffect } from 'react';
-import Animated from 'react-native-reanimated';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedScrollHandler,
+} from 'react-native-reanimated';
 import moment from 'moment';
-import { Calendar, ChevronDown } from 'lucide-react-native';
 import PageDots from '@/components/PageDots';
+import MetricItem from '@/components/projects/MetricItem';
+import TimeFilterSelect from '@/components/projects/TimeFilterSelect';
+import MonthCard from '@/components/projects/MonthCard';
+import { projectsUtils } from '@/utils/projects';
+import type { MonthData } from '@/types/projects';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-function MetricItem({ 
-  title, 
-  value,
-  themeColors,
-}: { 
-  title: string;
-  value: string;
-  themeColors: any;
-}) {
-  return (
-    <View style={styles.metricItem}>
-      <Text style={[styles.metricTitle, { color: themeColors.secondary }]} numberOfLines={1}>
-        {title}
-      </Text>
-      <Text style={[styles.metricValue, { color: themeColors.text }]}>
-        {value}
-      </Text>
-    </View>
-  );
-}
-
-function generateMonthData(date: moment.Moment, filter: typeof TIME_FILTERS[number]) {
-  const alignedDate = filter.getStartDate(date.clone());
-  return {
-    id: alignedDate.format('YYYY-MM'),
-    month: alignedDate.month(),
-    year: alignedDate.year(),
-    label: filter.formatLabel(alignedDate),
-    date: alignedDate.toDate(),
-  };
-}
-
-function generateInitialMonths(filter: typeof TIME_FILTERS[number], date: moment.Moment) {
-  const months = [];
-  const alignedDate = filter.getStartDate(date.clone());
-  
-  const monthDate = alignedDate.clone();
-  months.push(generateMonthData(monthDate, filter));
-  
-  return months;
-}
-
-function TimeFilterSelect({ themeColors }: { themeColors: any }) {
-  const { selectedFilter, setSelectedFilter } = useTime();
-  const [isOpen, setIsOpen] = useState(false);
-  
-  const currentFilter = TIME_FILTERS.find(f => f.id === selectedFilter)!;
-
-  return (
-    <>
-      <TouchableOpacity
-        style={[styles.filterSelect, { 
-          backgroundColor: themeColors.card,
-          borderColor: themeColors.border,
-        }]}
-        onPress={() => setIsOpen(true)}
-      >
-        <Calendar size={20} color={themeColors.primary} style={styles.filterIcon} />
-        <Text style={[styles.filterSelectText, { color: themeColors.text }]}>
-          {currentFilter.label}
-        </Text>
-        <ChevronDown size={20} color={themeColors.secondary} />
-      </TouchableOpacity>
-
-      <Modal
-        visible={isOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsOpen(false)}
-      >
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => setIsOpen(false)}
-        >
-          <View style={[styles.modalContent, { 
-            backgroundColor: themeColors.card,
-            borderColor: themeColors.border,
-          }]}>
-            {TIME_FILTERS.map((filter) => (
-              <TouchableOpacity
-                key={filter.id}
-                style={[styles.filterOption, { 
-                  backgroundColor: selectedFilter === filter.id 
-                    ? `${themeColors.primary}15`
-                    : 'transparent'
-                }]}
-                onPress={() => {
-                  setSelectedFilter(filter.id);
-                  setIsOpen(false);
-                }}
-              >
-                <Calendar 
-                  size={20} 
-                  color={themeColors.primary}
-                  style={styles.filterIcon} 
-                />
-                <Text style={[styles.filterOptionText, { 
-                  color: themeColors.text,
-                  fontFamily: selectedFilter === filter.id 
-                    ? 'Inter-Medium' 
-                    : 'Inter-Regular'
-                }]}>
-                  {filter.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
-    </>
-  );
-}
-
-function MonthCard({ 
-  item,
-  themeColors,
-}: { 
-  item: ReturnType<typeof generateMonthData>;
-  themeColors: any;
-}) {
-  return (
-    <Animated.View 
-      style={[
-        styles.card,
-        { 
-          backgroundColor: themeColors.card,
-          borderColor: themeColors.border,
-        }
-      ]}
-    >
-      <Text style={[styles.monthLabel, { 
-        color: themeColors.text,
-        fontFamily: 'Inter-Regular'
-      }]}>
-        {item.label}
-      </Text>
-
-      <View style={styles.content}>
-        <Text style={[styles.placeholder, { color: themeColors.secondary }]}>
-          No projects scheduled
-        </Text>
-      </View>
-    </Animated.View>
-  );
-}
 
 export default function ProjectsScreen() {
   const { theme } = useTheme();
   const themeColors = colors[theme];
   const { selectedFilter, currentFilter, referenceDate, setReferenceDate } = useTime();
   
-  const [months, setMonths] = useState(() => generateInitialMonths(currentFilter, moment()));
+  const [months, setMonths] = useState<MonthData[]>(() => 
+    projectsUtils.generateInitialMonths(currentFilter, moment())
+  );
   const [visibleDate, setVisibleDate] = useState(moment());
-  const [currentIndex, setCurrentIndex] = useState(0); // Start at first index since we only have one
+  const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
-  const initialScrollDone = useRef(false);
+  const scrollX = useSharedValue(0);
 
   useEffect(() => {
-    const newMonths = generateInitialMonths(currentFilter, referenceDate);
+    const newMonths = projectsUtils.generateInitialMonths(currentFilter, referenceDate);
     setMonths(newMonths);
-    setCurrentIndex(0); // Reset to first index when filter changes
+    setCurrentIndex(0);
+    scrollX.value = 0;
   }, [selectedFilter, currentFilter]);
 
   const loadMoreMonths = useCallback((direction: 'start' | 'end') => {
@@ -179,34 +43,26 @@ export default function ProjectsScreen() {
         const newMonths = [];
         for (let i = -1; i < 0; i++) {
           const date = firstDate.clone().add(i * currentFilter.months, 'months');
-          newMonths.push(generateMonthData(date, currentFilter));
+          newMonths.push(projectsUtils.generateMonthData(date, currentFilter));
         }
-        setCurrentIndex(prev => prev + newMonths.length); // Adjust index when adding to start
+        setCurrentIndex(prev => prev + newMonths.length);
         return [...newMonths, ...currentMonths];
       } else {
         const lastDate = moment(currentMonths[currentMonths.length - 1].date);
         const newMonths = [];
         for (let i = 1; i < 2; i++) {
           const date = lastDate.clone().add(i * currentFilter.months, 'months');
-          newMonths.push(generateMonthData(date, currentFilter));
+          newMonths.push(projectsUtils.generateMonthData(date, currentFilter));
         }
         return [...currentMonths, ...newMonths];
       }
     });
   }, [currentFilter]);
 
-  const onEndReached = () => {
-    loadMoreMonths('end');
-  };
-
-  const onStartReached = () => {
-    loadMoreMonths('start');
-  };
-
-  const getItemLayout = (_: any, index: number) => ({
-    length: SCREEN_WIDTH,
-    offset: SCREEN_WIDTH * index,
-    index,
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollX.value = event.contentOffset.x;
+    },
   });
 
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
@@ -276,17 +132,23 @@ export default function ProjectsScreen() {
         </View>
       </View>
 
-      <FlatList
+      <Animated.FlatList
         ref={flatListRef}
         data={months}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
-        getItemLayout={getItemLayout}
-        onEndReached={onEndReached}
-        onStartReached={onStartReached}
-        onStartReachedThreshold={0.5}
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        getItemLayout={(_, index) => ({
+          length: SCREEN_WIDTH,
+          offset: SCREEN_WIDTH * index,
+          index,
+        })}
+        onEndReached={() => loadMoreMonths('end')}
+        onStartReached={() => loadMoreMonths('start')}
         onEndReachedThreshold={0.5}
+        onStartReachedThreshold={0.5}
         viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
         maintainVisibleContentPosition={{
           minIndexForVisible: 0,
@@ -296,11 +158,12 @@ export default function ProjectsScreen() {
             <MonthCard
               item={item}
               themeColors={themeColors}
+              scrollX={scrollX}
             />
           </View>
         )}
         keyExtractor={item => item.id}
-        initialScrollIndex={0} // Start at first index since we only have one
+        initialScrollIndex={0}
       />
     </View>
   );
@@ -344,100 +207,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 16,
   },
-  metricItem: {
-    flex: 1,
-    gap: 2,
-  },
-  metricTitle: {
-    fontSize: 11,
-    fontFamily: 'Inter-Regular',
-  },
-  metricValue: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-  },
   itemContainer: {
     width: SCREEN_WIDTH,
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  card: {
-    width: SCREEN_WIDTH,
-    height: '100%',
-    borderWidth: 1,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-      },
-      android: {
-        elevation: 5,
-      },
-      web: {
-        boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
-      }
-    }),
-  },
-  monthLabel: {
-    fontSize: 28,
-    textAlign: 'center',
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholder: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    opacity: 0.7,
-  },
-  filterSelect: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  filterSelectText: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    marginLeft: 8,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    width: '100%',
-    maxWidth: 400,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  filterOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  filterOptionText: {
-    fontSize: 16,
-    marginLeft: 12,
-  },
-  filterIcon: {
-    marginRight: 4,
   },
 });
