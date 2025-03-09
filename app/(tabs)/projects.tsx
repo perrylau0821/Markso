@@ -5,6 +5,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Animated from 'react-native-reanimated';
 import moment from 'moment';
 import { Calendar, ChevronDown } from 'lucide-react-native';
+import PageDots from '@/components/PageDots';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -44,10 +45,8 @@ function generateInitialMonths(filter: typeof TIME_FILTERS[number], date: moment
   const months = [];
   const alignedDate = filter.getStartDate(date.clone());
   
-
-    const monthDate = alignedDate.clone().add(0*filter.months, 'months');
-    months.push(generateMonthData(monthDate, filter));
-
+  const monthDate = alignedDate.clone();
+  months.push(generateMonthData(monthDate, filter));
   
   return months;
 }
@@ -163,15 +162,15 @@ export default function ProjectsScreen() {
   
   const [months, setMonths] = useState(() => generateInitialMonths(currentFilter, moment()));
   const [visibleDate, setVisibleDate] = useState(moment());
+  const [currentIndex, setCurrentIndex] = useState(0); // Start at first index since we only have one
   const flatListRef = useRef<FlatList>(null);
   const initialScrollDone = useRef(false);
 
   useEffect(() => {
     const newMonths = generateInitialMonths(currentFilter, referenceDate);
     setMonths(newMonths);
+    setCurrentIndex(0); // Reset to first index when filter changes
   }, [selectedFilter, currentFilter]);
-
-console.log(months.map(m=>m.id))
 
   const loadMoreMonths = useCallback((direction: 'start' | 'end') => {
     setMonths(currentMonths => {
@@ -182,6 +181,7 @@ console.log(months.map(m=>m.id))
           const date = firstDate.clone().add(i * currentFilter.months, 'months');
           newMonths.push(generateMonthData(date, currentFilter));
         }
+        setCurrentIndex(prev => prev + newMonths.length); // Adjust index when adding to start
         return [...newMonths, ...currentMonths];
       } else {
         const lastDate = moment(currentMonths[currentMonths.length - 1].date);
@@ -215,6 +215,7 @@ console.log(months.map(m=>m.id))
       const newVisibleDate = moment(visibleItem.item.date);
       setVisibleDate(newVisibleDate);
       setReferenceDate(newVisibleDate);
+      setCurrentIndex(visibleItem.index);
     }
   }, [setReferenceDate]);
 
@@ -234,6 +235,8 @@ console.log(months.map(m=>m.id))
         </Text>
         
         <TimeFilterSelect themeColors={themeColors} />
+
+        <PageDots total={months.length} current={currentIndex} />
 
         <View style={[styles.metricsContainer, { 
           backgroundColor: themeColors.card,
@@ -282,6 +285,7 @@ console.log(months.map(m=>m.id))
         getItemLayout={getItemLayout}
         onEndReached={onEndReached}
         onStartReached={onStartReached}
+        onStartReachedThreshold={0.5}
         onEndReachedThreshold={0.5}
         viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
         maintainVisibleContentPosition={{
@@ -296,6 +300,7 @@ console.log(months.map(m=>m.id))
           </View>
         )}
         keyExtractor={item => item.id}
+        initialScrollIndex={0} // Start at first index since we only have one
       />
     </View>
   );
