@@ -44,10 +44,10 @@ function generateInitialMonths(filter: typeof TIME_FILTERS[number], date: moment
   const months = [];
   const alignedDate = filter.getStartDate(date.clone());
   
-  for (let i = -12; i <= 12; i++) {
-    const monthDate = alignedDate.clone().add(i * filter.months, 'months');
+
+    const monthDate = alignedDate.clone().add(0*filter.months, 'months');
     months.push(generateMonthData(monthDate, filter));
-  }
+
   
   return months;
 }
@@ -169,38 +169,16 @@ export default function ProjectsScreen() {
   useEffect(() => {
     const newMonths = generateInitialMonths(currentFilter, referenceDate);
     setMonths(newMonths);
-    
-    const referenceIndex = newMonths.findIndex(month => 
-      moment(month.date).isSame(currentFilter.getStartDate(referenceDate), 'month')
-    );
-    
-    if (referenceIndex !== -1) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToIndex({
-          index: referenceIndex,
-          animated: true,
-        });
-      }, 50);
-    }
   }, [selectedFilter, currentFilter]);
 
-  useEffect(() => {
-    if (!initialScrollDone.current && flatListRef.current) {
-      const centerIndex = Math.floor(months.length / 2);
-      flatListRef.current?.scrollToIndex({
-        index: centerIndex,
-        animated: false,
-      });
-      initialScrollDone.current = true;
-    }
-  }, []);
+console.log(months.map(m=>m.id))
 
   const loadMoreMonths = useCallback((direction: 'start' | 'end') => {
     setMonths(currentMonths => {
       if (direction === 'start') {
         const firstDate = moment(currentMonths[0].date);
         const newMonths = [];
-        for (let i = -6; i < 0; i++) {
+        for (let i = -1; i < 0; i++) {
           const date = firstDate.clone().add(i * currentFilter.months, 'months');
           newMonths.push(generateMonthData(date, currentFilter));
         }
@@ -208,7 +186,7 @@ export default function ProjectsScreen() {
       } else {
         const lastDate = moment(currentMonths[currentMonths.length - 1].date);
         const newMonths = [];
-        for (let i = 1; i <= 6; i++) {
+        for (let i = 1; i < 2; i++) {
           const date = lastDate.clone().add(i * currentFilter.months, 'months');
           newMonths.push(generateMonthData(date, currentFilter));
         }
