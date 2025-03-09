@@ -8,11 +8,19 @@ interface MonthCardProps {
   item: MonthData;
   themeColors: any;
   scrollX: Animated.SharedValue<number>;
-  isScrolling: boolean;
+  isScrolling: Animated.SharedValue<number>;
+  onFixedProjectLayout?: (layout: { x: number; y: number; width: number; height: number }) => void;
 }
 
-export default function MonthCard({ item, themeColors, scrollX, isScrolling }: MonthCardProps) {
+export default function MonthCard({ 
+  item, 
+  themeColors, 
+  scrollX, 
+  isScrolling,
+  onFixedProjectLayout 
+}: MonthCardProps) {
   const currentMonth = moment(item.date);
+  const fixedProjects = item.projects.filter(p => p.isFixed);
 
   return (
     <View 
@@ -20,17 +28,9 @@ export default function MonthCard({ item, themeColors, scrollX, isScrolling }: M
         styles.card,
         { 
           backgroundColor: themeColors.card,
-          borderColor: themeColors.border,
         }
       ]}
     >
-      <Text style={[styles.monthLabel, { 
-        color: themeColors.text,
-        fontFamily: 'Inter-Regular'
-      }]}>
-        {item.label}
-      </Text>
-
       <View style={styles.content}>
         {item.projects.map((project) => (
           <ProjectItem
@@ -40,6 +40,7 @@ export default function MonthCard({ item, themeColors, scrollX, isScrolling }: M
             themeColors={themeColors}
             scrollX={scrollX}
             isScrolling={isScrolling}
+            onLayout={project.isFixed ? onFixedProjectLayout : undefined}
           />
         ))}
 
@@ -57,7 +58,6 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     height: '100%',
-    borderWidth: 1,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
@@ -73,13 +73,6 @@ const styles = StyleSheet.create({
         boxShadow: '0 2px 10px rgba(0,0,0,0.15)',
       }
     }),
-  },
-  monthLabel: {
-    fontSize: 28,
-    textAlign: 'center',
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
   content: {
     flex: 1,

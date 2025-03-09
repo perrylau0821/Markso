@@ -5,21 +5,15 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import Animated, { 
   useSharedValue, 
   useAnimatedScrollHandler,
-  useAnimatedStyle,
-  withTiming,
-  withRepeat,
-  withSequence,
-  withDelay,
-  Easing,
 } from 'react-native-reanimated';
 import moment from 'moment';
 import PageDots from '@/components/PageDots';
 import MetricItem from '@/components/projects/MetricItem';
 import TimeFilterSelect from '@/components/projects/TimeFilterSelect';
 import MonthCard from '@/components/projects/MonthCard';
+import ProjectPortal from '@/components/projects/ProjectPortal';
 import { projectsUtils } from '@/utils/projects';
 import type { MonthData } from '@/types/projects';
-import { ArrowRight } from 'lucide-react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -33,10 +27,18 @@ export default function ProjectsScreen() {
   );
   const [visibleDate, setVisibleDate] = useState(moment());
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [fixedProjectLayout, setFixedProjectLayout] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    pageX: number;
+    pageY: number;
+  } | null>(null);
+  
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useSharedValue(0);
-  const isScrolling = useSharedValue(0);
-
+  const isScrolling = useSharedValue(1);
 
   useEffect(() => {
     const newMonths = projectsUtils.generateInitialMonths(currentFilter, referenceDate);
@@ -104,6 +106,18 @@ export default function ProjectsScreen() {
     { viewabilityConfig, onViewableItemsChanged },
   ]);
 
+  const handleFixedProjectLayout = useCallback((layout: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    pageX: number;
+    pageY: number;
+  }) => {
+    setFixedProjectLayout(layout);
+  }, []);
+
+  const fixedProject = months[0]?.projects.find(p => p.isFixed);
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
@@ -114,14 +128,7 @@ export default function ProjectsScreen() {
         
         <TimeFilterSelect themeColors={themeColors} />
 
-        
-
-        <PageDots total={months.length} current={currentIndex} />
-
-        <View style={[styles.metricsContainer, { 
-          backgroundColor: themeColors.card,
-          borderColor: themeColors.border,
-        }]}>
+        <View style={[styles.metricsContainer, { backgroundColor: themeColors.card }]}>
           <View style={styles.netIncomeContainer}>
             <Text style={[styles.netIncomeTitle, { color: themeColors.secondary }]}>
               Total Net Income
@@ -154,42 +161,57 @@ export default function ProjectsScreen() {
             />
           </View>
         </View>
+
+        <PageDots total={months.length} current={currentIndex} />
       </View>
 
-      <Animated.FlatList
-        ref={flatListRef}
-        data={months}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-        getItemLayout={(_, index) => ({
-          length: SCREEN_WIDTH,
-          offset: SCREEN_WIDTH * index,
-          index,
-        })}
-        onEndReached={() => loadMoreMonths('end')}
-        onStartReached={() => loadMoreMonths('start')}
-        onEndReachedThreshold={0.5}
-        onStartReachedThreshold={0.5}
-        viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
-        maintainVisibleContentPosition={{
-          minIndexForVisible: 0,
-        }}
-        renderItem={({ item }) => (
-          <View style={styles.itemContainer}>
-            <MonthCard
-              item={item}
-              themeColors={themeColors}
-              scrollX={scrollX}
-              isScrolling={isScrolling}
-            />
-          </View>
+      <View style={styles.contentContainer}>
+        <Animated.FlatList
+          ref={flatListRef}
+          data={months}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={scrollHandler}
+          scrollEventThrottle={16}
+          getItemLayout={(_, index) => ({
+            length: SCREEN_WIDTH,
+            offset: SCREEN_WIDTH * index,
+            index,
+          })}
+          onEndReached={() => loadMoreMonths('end')}
+          onStartReached={() => loadMoreMonths('start')}
+          onEndReachedThreshold={0.5}
+          onStartReachedThreshold={0.5}
+          viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+          }}
+          renderItem={({ item }) => (
+            <View style={styles.itemContainer}>
+              <MonthCard
+                item={item}
+                themeColors={themeColors}
+                scrollX={scrollX}
+                isScrolling={isScrolling}
+                onFixedProjectLayout={handleFixedProjectLayout}
+              />
+            </View>
+          )}
+          keyExtractor={item => item.id}
+          initialScrollIndex={0}
+        />
+
+        {fixedProject && fixedProjectLayout && (
+          <ProjectPortal
+            project={fixedProject}
+            isScrolling={isScrolling}
+            themeColors={themeColors}
+            layout={fixedProjectLayout}
+            scrollX={scrollX}
+          />
         )}
-        keyExtractor={item => item.id}
-        initialScrollIndex={0}
-      />
+      </View>
     </View>
   );
 }
@@ -204,6 +226,10 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
   },
+  contentContainer: {
+    flex: 1,
+    position: 'relative',
+  },
   title: {
     fontSize: 32,
     fontFamily: 'Inter-Bold',
@@ -211,13 +237,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   metricsContainer: {
-    marginTop: 16,
-    padding: 12,
-    borderWidth: 1,
-    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    gap: 16,
   },
   netIncomeContainer: {
-    gap: 2,
+    gap: 4,
   },
   netIncomeTitle: {
     fontSize: 12,
@@ -237,23 +262,5 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  indicatorContainer: {
-    marginVertical: 8,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    alignItems: 'center',
-  },
-  indicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-  },
-  indicatorText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
   },
 });

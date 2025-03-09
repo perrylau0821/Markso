@@ -7,8 +7,8 @@ const demoProjects: Project[] = [
   {
     id: '1',
     name: 'Global Platform Migration',
-    startDate: '2024-01-01',
-    endDate: '2025-12-31',
+    startDate: '2025-01-01',
+    endDate: '2025-05-31',
     isFixed: true, // This project will stay fixed
   },
   {
@@ -49,10 +49,8 @@ export const generateInitialMonths = (filter: typeof TIME_FILTERS[number], date:
   const alignedDate = filter.getStartDate(date.clone());
   
   // Generate current month
-
-    const monthDate = alignedDate.clone()
-    months.push(generateMonthData(monthDate, filter));
-
+  const monthDate = alignedDate.clone();
+  months.push(generateMonthData(monthDate, filter));
   
   return months;
 };

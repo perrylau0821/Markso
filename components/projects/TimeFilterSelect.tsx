@@ -1,7 +1,12 @@
-import { View, Text, TouchableOpacity, Modal, Pressable, StyleSheet } from 'react-native';
-import { Calendar, ChevronDown } from 'lucide-react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useTime, TIME_FILTERS } from '@/providers/TimeProvider';
-import { useState } from 'react';
+import Animated, { 
+  useAnimatedStyle, 
+  useSharedValue, 
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
+import { useEffect, useCallback, useMemo } from 'react';
 
 interface TimeFilterSelectProps {
   themeColors: any;
@@ -9,115 +14,97 @@ interface TimeFilterSelectProps {
 
 export default function TimeFilterSelect({ themeColors }: TimeFilterSelectProps) {
   const { selectedFilter, setSelectedFilter } = useTime();
-  const [isOpen, setIsOpen] = useState(false);
-  
-  const currentFilter = TIME_FILTERS.find(f => f.id === selectedFilter)!;
+  const indicatorPosition = useSharedValue(0);
+
+  // Calculate tab width based on number of filters
+  const tabWidth = useMemo(() => {
+    return 100 / TIME_FILTERS.length;
+  }, []);
+
+  const updateIndicator = useCallback((index: number) => {
+    indicatorPosition.value = withTiming(index * 100, {
+      duration: 300,
+      easing: Easing.bezier(0.4, 0, 0.2, 1),
+    });
+  }, []);
+
+  useEffect(() => {
+    const index = TIME_FILTERS.findIndex(f => f.id === selectedFilter);
+    if (index !== -1) {
+      updateIndicator(index);
+    }
+  }, [selectedFilter, updateIndicator]);
+
+  const indicatorStyle = useAnimatedStyle(() => ({
+    width: `${tabWidth}%`,
+    transform: [{ translateX: `${indicatorPosition.value}%` }],
+  }));
 
   return (
-    <>
-      <TouchableOpacity
-        style={[styles.filterSelect, { 
-          backgroundColor: themeColors.card,
-          borderColor: themeColors.border,
-        }]}
-        onPress={() => setIsOpen(true)}
-      >
-        <Calendar size={20} color={themeColors.primary} style={styles.filterIcon} />
-        <Text style={[styles.filterSelectText, { color: themeColors.text }]}>
-          {currentFilter.label}
-        </Text>
-        <ChevronDown size={20} color={themeColors.secondary} />
-      </TouchableOpacity>
-
-      <Modal
-        visible={isOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setIsOpen(false)}
-      >
-        <Pressable 
-          style={styles.modalOverlay}
-          onPress={() => setIsOpen(false)}
-        >
-          <View style={[styles.modalContent, { 
-            backgroundColor: themeColors.card,
-            borderColor: themeColors.border,
-          }]}>
-            {TIME_FILTERS.map((filter) => (
-              <TouchableOpacity
-                key={filter.id}
-                style={[styles.filterOption, { 
-                  backgroundColor: selectedFilter === filter.id 
-                    ? `${themeColors.primary}15`
-                    : 'transparent'
-                }]}
-                onPress={() => {
-                  setSelectedFilter(filter.id);
-                  setIsOpen(false);
-                }}
-              >
-                <Calendar 
-                  size={20} 
-                  color={themeColors.primary}
-                  style={styles.filterIcon} 
-                />
-                <Text style={[styles.filterOptionText, { 
-                  color: themeColors.text,
+    <View style={styles.container}>
+      <View style={[styles.tabBar, { backgroundColor: themeColors.shade2 }]}>
+        {TIME_FILTERS.map((filter, index) => (
+          <Pressable
+            key={filter.id}
+            style={[styles.tab, { width: `${tabWidth}%` }]}
+            onPress={() => {
+              setSelectedFilter(filter.id);
+              updateIndicator(index);
+            }}
+          >
+            <Text 
+              style={[
+                styles.tabText,
+                { 
+                  color: selectedFilter === filter.id 
+                    ? themeColors.primary 
+                    : themeColors.secondary,
                   fontFamily: selectedFilter === filter.id 
                     ? 'Inter-Medium' 
-                    : 'Inter-Regular'
-                }]}>
-                  {filter.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </Pressable>
-      </Modal>
-    </>
+                    : 'Inter-Regular',
+                }
+              ]}
+              numberOfLines={1}
+            >
+              {filter.label}
+            </Text>
+          </Pressable>
+        ))}
+        <Animated.View 
+          style={[
+            styles.indicator,
+            { backgroundColor: themeColors.primary },
+            indicatorStyle,
+          ]} 
+        />
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  filterSelect: {
+  container: {
+    marginBottom: 24,
+  },
+  tabBar: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
     borderRadius: 8,
-    borderWidth: 1,
+    position: 'relative',
+    height: 40,
+    width: '100%',
   },
-  filterSelectText: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    marginLeft: 8,
+  indicator: {
+    position: 'absolute',
+    height: 2,
+    bottom: 0,
+    left: 0,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  tab: {
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
-  modalContent: {
-    width: '100%',
-    maxWidth: 400,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  filterOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  filterOptionText: {
-    fontSize: 16,
-    marginLeft: 12,
-  },
-  filterIcon: {
-    marginRight: 4,
+  tabText: {
+    fontSize: 14,
   },
 });

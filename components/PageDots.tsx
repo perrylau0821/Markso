@@ -37,7 +37,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    paddingVertical: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
   },
   dot: {
     height: 8,

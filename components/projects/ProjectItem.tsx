@@ -1,16 +1,11 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, findNodeHandle } from 'react-native';
 import type { Project } from '@/types/projects';
 import moment from 'moment';
 import Animated, { 
   useAnimatedStyle,
-  interpolate,
   SharedValue,
-  withSpring,
-  useDerivedValue,
 } from 'react-native-reanimated';
-import { Dimensions } from 'react-native';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { useRef, useCallback, useEffect } from 'react';
 
 interface ProjectItemProps {
   project: Project;
@@ -18,6 +13,7 @@ interface ProjectItemProps {
   themeColors: any;
   scrollX: SharedValue<number>;
   isScrolling: SharedValue<number>;
+  onLayout?: (layout: { x: number; y: number; width: number; height: number; pageX: number; pageY: number }) => void;
 }
 
 export default function ProjectItem({ 
@@ -26,33 +22,50 @@ export default function ProjectItem({
   themeColors,
   scrollX,
   isScrolling,
+  onLayout,
 }: ProjectItemProps) {
   const startDate = moment(project.startDate);
   const endDate = moment(project.endDate);
-
-  // Derive opacity based on scroll position and scrolling state
-  const opacity = useDerivedValue(() => {
-    if (!project.isFixed) return 1;
-
-    return isScrolling.value
-  });
+  const viewRef = useRef(null);
 
   const animatedStyle = useAnimatedStyle(() => {
-
-    // Fixed projects fade and scale based on scroll
+    if (!project.isFixed) return { opacity: 1 };
     return {
-      opacity: opacity.value,
-      
+      opacity: isScrolling.value
     };
   });
 
+  const measureView = useCallback(() => {
+    if (!viewRef.current) return;
+
+    const handle = findNodeHandle(viewRef.current);
+    if (!handle) return;
+
+    viewRef.current.measure((x, y, width, height, pageX, pageY) => {
+      if (onLayout) {
+        requestAnimationFrame(() => {
+          onLayout({ x, y, width, height, pageX, pageY });
+        });
+      }
+    });
+  }, [onLayout]);
+
+  useEffect(() => {
+    if (project.isFixed && onLayout) {
+      const timeoutId = setTimeout(measureView, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [project.isFixed, onLayout, measureView]);
+
   return (
     <Animated.View 
+      ref={viewRef}
       style={[
         styles.container, 
         animatedStyle,
         project.isFixed && styles.fixedProject
       ]}
+      onLayout={measureView}
     >
       <View 
         style={[
@@ -63,16 +76,16 @@ export default function ProjectItem({
           }
         ]}
       >
+        {project.isFixed && (
+          <View style={[styles.badge, { backgroundColor: themeColors.primary }]}>
+            <Text style={styles.badgeText}>Fixed Project</Text>
+          </View>
+        )}
         <Text style={[styles.projectName, { color: themeColors.text }]}>
           {project.name}
         </Text>
         <Text style={[styles.projectDates, { color: themeColors.secondary }]}>
           {startDate.format('MMM D, YYYY')} - {endDate.format('MMM D, YYYY')}
-        </Text>
-        <Text style={[styles.projectType, { 
-          color: project.isFixed ? themeColors.primary : themeColors.secondary 
-        }]}>
-          {project.isFixed ? 'Fixed Project' : 'Regular Project'}
         </Text>
       </View>
     </Animated.View>
@@ -93,17 +106,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 4,
   },
+  badge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+  },
   projectName: {
     fontSize: 16,
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'Inter-SemiBold',
+    marginBottom: 4,
   },
   projectDates: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
-  },
-  projectType: {
-    fontSize: 12,
-    fontFamily: 'Inter-Medium',
-    marginTop: 4,
+    opacity: 0.8,
   },
 });

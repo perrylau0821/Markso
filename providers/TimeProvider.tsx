@@ -15,14 +15,14 @@ export interface TimeFilterOption {
 export const TIME_FILTERS: TimeFilterOption[] = [
   { 
     id: 'year', 
-    label: 'Year', 
+    label: 'Y', 
     months: 12,
     getStartDate: (date) => date.clone().startOf('year'),
     formatLabel: (date) => date.format('YYYY'),
   },
   { 
     id: 'half-year', 
-    label: '6 Months', 
+    label: '6M', 
     months: 6,
     getStartDate: (date) => {
       const month = date.month();
@@ -35,7 +35,7 @@ export const TIME_FILTERS: TimeFilterOption[] = [
   },
   { 
     id: 'quarter', 
-    label: 'Quarter', 
+    label: 'Q', 
     months: 3,
     getStartDate: (date) => {
       const month = date.month();
@@ -48,7 +48,7 @@ export const TIME_FILTERS: TimeFilterOption[] = [
   },
   { 
     id: '2-months', 
-    label: '2 Months', 
+    label: '2M', 
     months: 2,
     getStartDate: (date) => {
       const month = date.month();
@@ -58,7 +58,7 @@ export const TIME_FILTERS: TimeFilterOption[] = [
   },
   { 
     id: 'month', 
-    label: 'Month', 
+    label: 'M', 
     months: 1,
     getStartDate: (date) => date.clone().startOf('month'),
     formatLabel: (date) => date.format('MMMM YYYY'),
