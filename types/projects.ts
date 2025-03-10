@@ -6,7 +6,6 @@ export interface Project {
   name: string;
   startDate: string;
   endDate: string;
-  isFixed: boolean; // New property to determine if project stays fixed
 }
 
 export interface MonthData {

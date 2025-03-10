@@ -1,130 +1,32 @@
-import { View, Text, StyleSheet, Platform, Dimensions, FlatList } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useTheme, colors } from '@/providers/ThemeProvider';
-import { useTime } from '@/providers/TimeProvider';
-import { useState, useRef, useCallback, useEffect } from 'react';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedScrollHandler,
-} from 'react-native-reanimated';
-import moment from 'moment';
+import { useState } from 'react';
 import PageDots from '@/components/PageDots';
 import MetricItem from '@/components/projects/MetricItem';
 import TimeFilterSelect from '@/components/projects/TimeFilterSelect';
-import MonthCard from '@/components/projects/MonthCard';
-import ProjectPortal from '@/components/projects/ProjectPortal';
-import { projectsUtils } from '@/utils/projects';
-import type { MonthData } from '@/types/projects';
+import TimeBlockList from '@/components/projects/TimeBlockList';
+import TimeBlockGrid from '@/components/projects/TimeBlockGrid';
+import { ScrollProvider, useScroll } from '@/providers/ScrollProvider';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-export default function ProjectsScreen() {
+function ProjectsContent() {
   const { theme } = useTheme();
   const themeColors = colors[theme];
-  const { selectedFilter, currentFilter, referenceDate, setReferenceDate } = useTime();
-  
-  const [months, setMonths] = useState<MonthData[]>(() => 
-    projectsUtils.generateInitialMonths(currentFilter, moment())
-  );
-  const [visibleDate, setVisibleDate] = useState(moment());
+  const { currentScrollY } = useScroll();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [fixedProjectLayout, setFixedProjectLayout] = useState<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    pageX: number;
-    pageY: number;
-  } | null>(null);
-  
-  const flatListRef = useRef<FlatList>(null);
-  const scrollX = useSharedValue(0);
-  const isScrolling = useSharedValue(1);
-
-  useEffect(() => {
-    const newMonths = projectsUtils.generateInitialMonths(currentFilter, referenceDate);
-    setMonths(newMonths);
-    setCurrentIndex(0);
-    scrollX.value = 0;
-  }, [selectedFilter, currentFilter]);
-
-  const loadMoreMonths = useCallback((direction: 'start' | 'end') => {
-    setMonths(currentMonths => {
-      if (direction === 'start') {
-        const firstDate = moment(currentMonths[0].date);
-        const newMonths = [];
-        for (let i = -1; i < 0; i++) {
-          const date = firstDate.clone().add(i * currentFilter.months, 'months');
-          newMonths.push(projectsUtils.generateMonthData(date, currentFilter));
-        }
-        setCurrentIndex(prev => prev + newMonths.length);
-        return [...newMonths, ...currentMonths];
-      } else {
-        const lastDate = moment(currentMonths[currentMonths.length - 1].date);
-        const newMonths = [];
-        for (let i = 1; i < 2; i++) {
-          const date = lastDate.clone().add(i * currentFilter.months, 'months');
-          newMonths.push(projectsUtils.generateMonthData(date, currentFilter));
-        }
-        return [...currentMonths, ...newMonths];
-      }
-    });
-  }, [currentFilter]);
-
-  const scrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      scrollX.value = event.contentOffset.x;
-    },
-    onBeginDrag: () => {
-      isScrolling.value = 0;
-    },
-    onEndDrag: () => {
-      isScrolling.value = 1;
-    },
-    onMomentumBegin: () => {
-      isScrolling.value = 0;
-    },
-    onMomentumEnd: () => {
-      isScrolling.value = 1;
-    },
-  });
-
-  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
-      const visibleItem = viewableItems[0];
-      const newVisibleDate = moment(visibleItem.item.date);
-      setVisibleDate(newVisibleDate);
-      setReferenceDate(newVisibleDate);
-      setCurrentIndex(visibleItem.index);
-    }
-  }, [setReferenceDate]);
-
-  const viewabilityConfig = {
-    itemVisiblePercentThreshold: 50,
-  };
-
-  const viewabilityConfigCallbackPairs = useRef([
-    { viewabilityConfig, onViewableItemsChanged },
-  ]);
-
-  const handleFixedProjectLayout = useCallback((layout: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    pageX: number;
-    pageY: number;
-  }) => {
-    setFixedProjectLayout(layout);
-  }, []);
-
-  const fixedProject = months[0]?.projects.find(p => p.isFixed);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
   return (
     <View style={[styles.container, { backgroundColor: themeColors.background }]}>
       <View style={[styles.header, { backgroundColor: themeColors.card }]}>
-        <Text style={[styles.title, { color: themeColors.text }]}>
-          {currentFilter.formatLabel(visibleDate)}
-        </Text>
+        <View style={styles.headerTop}>
+          <Text style={[styles.title, { color: themeColors.text }]}>Projects</Text>
+          <Text 
+            style={[styles.viewToggle, { color: themeColors.primary }]}
+            onPress={() => setViewMode(prev => prev === 'list' ? 'grid' : 'list')}
+          >
+            {viewMode === 'list' ? 'Switch to Grid' : 'Switch to List'}
+          </Text>
+        </View>
         
         <TimeFilterSelect themeColors={themeColors} />
 
@@ -162,57 +64,28 @@ export default function ProjectsScreen() {
           </View>
         </View>
 
-        <PageDots total={months.length} current={currentIndex} />
+        <PageDots total={3} current={currentIndex} scrollY={currentScrollY} />
       </View>
 
       <View style={styles.contentContainer}>
-        <Animated.FlatList
-          ref={flatListRef}
-          data={months}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
-          getItemLayout={(_, index) => ({
-            length: SCREEN_WIDTH,
-            offset: SCREEN_WIDTH * index,
-            index,
-          })}
-          onEndReached={() => loadMoreMonths('end')}
-          onStartReached={() => loadMoreMonths('start')}
-          onEndReachedThreshold={0.5}
-          onStartReachedThreshold={0.5}
-          viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs.current}
-          maintainVisibleContentPosition={{
-            minIndexForVisible: 0,
-          }}
-          renderItem={({ item }) => (
-            <View style={styles.itemContainer}>
-              <MonthCard
-                item={item}
-                themeColors={themeColors}
-                scrollX={scrollX}
-                isScrolling={isScrolling}
-                onFixedProjectLayout={handleFixedProjectLayout}
-              />
-            </View>
-          )}
-          keyExtractor={item => item.id}
-          initialScrollIndex={0}
-        />
-
-        {fixedProject && fixedProjectLayout && (
-          <ProjectPortal
-            project={fixedProject}
-            isScrolling={isScrolling}
+        {viewMode === 'list' ? (
+          <TimeBlockList 
             themeColors={themeColors}
-            layout={fixedProjectLayout}
-            scrollX={scrollX}
+            onMonthChange={setCurrentIndex}
           />
+        ) : (
+          <TimeBlockGrid themeColors={themeColors} />
         )}
       </View>
     </View>
+  );
+}
+
+export default function ProjectsScreen() {
+  return (
+    <ScrollProvider>
+      <ProjectsContent />
+    </ScrollProvider>
   );
 }
 
@@ -226,15 +99,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
   },
-  contentContainer: {
-    flex: 1,
-    position: 'relative',
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   title: {
     fontSize: 32,
     fontFamily: 'Inter-Bold',
-    marginBottom: 24,
-    textAlign: 'center',
+  },
+  viewToggle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+  },
+  contentContainer: {
+    flex: 1,
+    position: 'relative',
   },
   metricsContainer: {
     paddingHorizontal: 12,
@@ -256,11 +137,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 16,
-  },
-  itemContainer: {
-    width: SCREEN_WIDTH,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

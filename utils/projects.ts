@@ -2,22 +2,44 @@ import moment from 'moment';
 import type { TIME_FILTERS } from '@/providers/TimeProvider';
 import type { MonthData, Project, ProjectsUtils } from '@/types/projects';
 
-// Just two demo projects - one fixed and one scrolling
+// Demo projects with varied time spans
 const demoProjects: Project[] = [
   {
     id: '1',
-    name: 'Global Platform Migration',
-    startDate: '2025-01-01',
-    endDate: '2025-05-31',
-    isFixed: true, // This project will stay fixed
+    name: 'Website Redesign',
+    startDate: '2025-02-15',
+    endDate: '2025-04-30',
   },
   {
     id: '2',
-    name: 'Monthly Updates',
-    startDate: '2025-03-01',
-    endDate: '2025-03-31',
-    isFixed: false, // This project will scroll with the page
+    name: 'Mobile App Development',
+    startDate: '2025-01-01',
+    endDate: '2025-06-30',
   },
+  {
+    id: '3',
+    name: 'Q1 Marketing Campaign',
+    startDate: '2025-01-01',
+    endDate: '2025-03-31',
+  },
+  {
+    id: '4',
+    name: 'System Maintenance',
+    startDate: '2025-03-15',
+    endDate: '2025-03-20',
+  },
+  {
+    id: '5',
+    name: 'Annual Strategy Planning',
+    startDate: '2025-03-01',
+    endDate: '2025-12-31',
+  },
+  {
+    id: '6',
+    name: 'Team Training Program',
+    startDate: '2025-03-25',
+    endDate: '2025-05-15',
+  }
 ];
 
 const getProjectsForMonth = (date: moment.Moment): Project[] => {
